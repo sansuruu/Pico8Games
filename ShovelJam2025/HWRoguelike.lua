@@ -31,7 +31,7 @@ function makePlayer()
         m_x = 0,
         m_y = 0,
         m_sprite = 1,
-        hw_length = 5,
+        hw_length = 10,
         ans_input = ""
     }
 end
