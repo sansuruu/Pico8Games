@@ -1,31 +1,75 @@
+--main function
+
 function _init()
     poke(0x5F2D, 1)
-    makePlayer()
-    makeHomework()
+    -- title screen stuff before any of this lmfao
     game_state = 0 -- 0 => not active, 1 => active, 2=> shop
     tick = 0
+    day = 1
+    num_table = {1,2,3,4,5,6,7,8,9,0}
+
 end
 
 
 function _update()
-    updateMouse()
-    updateKeyInput()
-    updateAttentionBar()
+    if (game_state == 0) then
+        if (btn(5)) game_init()
+    elseif (game_state == 1) then
+        updateMouse()
+        updateKeyInput()
+        updateEnemies()
+        updateAttentionBar()
+        updateTick()
+    end
 end
 
 function _draw()
-    cls(1)
-    sspr(24,0,16,16,65,32,59,60)
-    drawHomework() --in order -> background, homework, attention bar, enemies, mouse
-    drawAttentionBar()
-    drawMouse()
-    drawKeyInput()
+    if (game_state == 0) then
+        drawTitleScreen()
+    elseif (game_state == 1) then
+        cls(1)
+        sspr(24,0,16,16,65,32,59,60) -- brain
+        drawHomework() --in order -> background, homework, attention bar, enemies, mouse
+        drawAttentionBar()
+        drawEnemies()
+        drawMouse()
+        drawKeyInput()
+    end
     
 end
+
+--Title Screen + Game State Changers
+
+function drawTitleScreen()
+    cls(0)
+    print("procrasti-stop",38,50,7)
+    print("press ❎ to begin",32, 60, 7) 
+end
+
+
+
+function game_init()
+    game_state = 1
+    makePlayer()
+    makeHomework()
+    initEnemies()
+    --explain the game briefly lmfaoo
+    --add a quick inbetween scene where we basically choose a difficulty (LATER)
+end
+
+
 
 --HELPER
 function rndb(low,high)
 	return flr(rnd(high-low+1)+low)
+end
+
+function updateTick()
+    if (tick < 31) then
+        tick +=1
+    else
+        tick = 0
+    end
 end
 
 
@@ -93,7 +137,7 @@ end
 function updateKeyInput()
     local t = stat(31)
     if (t == "\r") return
-    if (t == "\t") then
+    if (t == " ") then
         hw.problems[hw.index] = hw.problems[hw.index]..p.ans_input
         if (p.ans_input == tostr(hw.answers[hw.index])) then
             hw.subm_format[hw.index] = 3
@@ -104,9 +148,16 @@ function updateKeyInput()
         p.ans_input = ""
         return
     end
-    if (t == "\b") then
+    if (t == "\b" or t=="\t") then
         p.ans_input = sub(p.ans_input,1,#p.ans_input-1)
-        --p.ans_input = p.ans_input.."backspace"
+        return
+    end
+    local isNum = false
+    for i in all(num_table) do
+        if (tostr(t) == tostr(i)) isNum = true
+    end
+    if (not isNum) then
+        return
     else
         p.ans_input = p.ans_input..t
     end
@@ -124,14 +175,81 @@ end
 
 --ATTENTION BAR
 function updateAttentionBar()
-    if (tick >=30) then
+    if (tick ==30) then
         p.attention -= 1
-        tick = 0
-    else
-        tick += 1
     end
 end
 
 function drawAttentionBar()
     rectfill(2,115,2+p.attention,120,11)
 end
+
+
+--ENEMIES
+
+function initEnemies()
+    enemies = {}
+    e_sec = 0
+end
+
+function updateEnemies()
+    --first check if the enemy we're looking at has made it
+    --move all current enemies
+    -- 96, 64 is the target
+    for i in all(enemies) do
+
+        if (i.x < 92) then
+            i.x += 1
+        elseif (i.x > 92) then
+            i.x -= 1
+        end
+        if (i.y < 60) then
+            i.y += 1
+        elseif (i.y > 60) then
+            i.y -= 1
+        end
+
+        if (checkEnemyCollision(i)) del(enemies,i)
+
+        if (i.x == 92 and i.y == 60) then
+            del(enemies,i)
+            p.attention -=5
+        end
+    end
+
+
+    -- then, if applicable, spawn an enemy if its time
+    if (tick > 0 and tick % 15 == 0) e_sec +=1
+    if (e_sec == 1) then
+        e_sec = 0
+        local temp_x = rndb(0,128)
+        local temp_y = nil
+        if (temp_x <64) then
+            temp_y = rndb(0,128)
+        else
+            temp_y = rndb(0,1) * 120
+        end
+
+        local e = {
+            x = temp_x,
+            y = temp_y,
+            sprite = rndb(5,10)
+        }
+        add(enemies,e)
+    end
+end
+
+function checkEnemyCollision(o)
+    if (o.x+1 < p.m_x+7 and o.x+6 > p.m_x and o.y+1 < p.m_y+7 and o.y+6 > p.m_y) then
+        return true
+    else
+        return false
+    end
+end
+
+function drawEnemies()
+    for i in all(enemies) do
+        spr(i.sprite,i.x,i.y)
+    end
+end
+
