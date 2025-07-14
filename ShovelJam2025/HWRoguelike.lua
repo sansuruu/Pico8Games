@@ -3,19 +3,24 @@ function _init()
     makePlayer()
     makeHomework()
     game_state = 0 -- 0 => not active, 1 => active, 2=> shop
+    tick = 0
 end
 
 
 function _update()
     updateMouse()
     updateKeyInput()
+    updateAttentionBar()
 end
 
 function _draw()
     cls(1)
+    sspr(24,0,16,16,65,32,59,60)
     drawHomework() --in order -> background, homework, attention bar, enemies, mouse
+    drawAttentionBar()
     drawMouse()
     drawKeyInput()
+    
 end
 
 --HELPER
@@ -31,8 +36,12 @@ function makePlayer()
         m_x = 0,
         m_y = 0,
         m_sprite = 1,
+        ans_input = "",
         hw_length = 10,
-        ans_input = ""
+        attention = 100,
+        distract_p = 20,
+        speed = 2
+
     }
 end
 
@@ -41,7 +50,6 @@ end
 function updateMouse()
     p.m_x = stat(32)
     p.m_y = stat(33)
-
 end
 
 function drawMouse()
@@ -79,6 +87,9 @@ function drawHomework()
     
 end
 
+
+ --KEYBOARD
+
 function updateKeyInput()
     local t = stat(31)
     if (t == "\r") return
@@ -108,4 +119,19 @@ function drawKeyInput()
     else
         print(p.ans_input,8+#hw.problems[hw.index]*4,hw.index*8,0)
     end
+end
+
+
+--ATTENTION BAR
+function updateAttentionBar()
+    if (tick >=30) then
+        p.attention -= 1
+        tick = 0
+    else
+        tick += 1
+    end
+end
+
+function drawAttentionBar()
+    rectfill(2,115,2+p.attention,120,11)
 end
