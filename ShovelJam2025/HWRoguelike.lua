@@ -15,10 +15,11 @@ function _update()
     if (game_state == 0) then
         if (btn(5)) game_init()
     elseif (game_state == 1) then
-        updateMouse()
         updateKeyInput()
+        updateMouse()
         updateEnemies()
         updateAttentionBar()
+        checkHomeworkComplete()
         updateTick()
     end
 end
@@ -81,11 +82,12 @@ function makePlayer()
         m_y = 0,
         m_sprite = 1,
         ans_input = "",
-        hw_length = 10,
+        hw_length = 26,
         attention = 100,
         distract_p = 20,
-        speed = 2
-
+        speed = 2,
+        correct = 0, --hold data on if its right or not
+        incorrect = 0
     }
 end
 
@@ -104,30 +106,56 @@ end
 --HOMEWORK
 function makeHomework()
     hw_complete = false
-    hw = {
-        problems = {},
-        answers = {},
-        subm_format = {}, -- 0 -> n/a, 3 -> correct, 8 -> wrong
-        index = 1
-    }
+    hw = {}
 
-    for i=1, p.hw_length do
-        local temp_ans = rndb(1,20)
-        add(hw.answers, temp_ans)
-        local temp_a = rndb(1,temp_ans)
-        local temp_b = temp_ans - temp_a
-        add(hw.problems,""..temp_a.."+"..temp_b.."=")
-        add(hw.subm_format,0)
+    page_count = (p.hw_length \ 14) + 1
+    local temp = p.hw_length
+    for i=1, page_count do 
+        hw_page = {
+            problems = {},
+            answers = {},
+            subm_format = {}, -- 0 -> n/a, 3 -> correct, 8 -> wrong
+            index = 1
+        }
+        if (temp > 13) then
+            for i=1, 13 do
+                local temp_ans = rndb(1,20)
+                add(hw_page.answers, temp_ans)
+                local temp_a = rndb(1,temp_ans)
+                local temp_b = temp_ans - temp_a
+                add(hw_page.problems,""..temp_a.."+"..temp_b.."=")
+                add(hw_page.subm_format,0)
+            end
+            add(hw, hw_page)
+            temp -= 13
+        else
+            for i=1, temp do
+                local temp_ans = rndb(1,20)
+                add(hw_page.answers, temp_ans)
+                local temp_a = rndb(1,temp_ans)
+                local temp_b = temp_ans - temp_a
+                add(hw_page.problems,""..temp_a.."+"..temp_b.."=")
+                add(hw_page.subm_format,0)
+            end
+            add(hw, hw_page)            
+        end
     end
 end
 
 function drawHomework()
+    local color = nil
+
     rectfill(2,2,60,125,6) --paper
     rectfill(4,4,58,123,7)
 
-    for i=1, #hw.problems do
-        print(hw.problems[i],8,i*8,hw.subm_format[i])
+    active_page = hw[1]
+    for i=1, #active_page.problems do
+        print(active_page.problems[i],8,i*8,active_page.subm_format[i])
     end
+    
+end
+
+function checkHomeworkComplete()
     
 end
 
@@ -136,15 +164,25 @@ end
 
 function updateKeyInput()
     local t = stat(31)
+    local last = #active_page.problems % 13
     if (t == "\r") return
     if (t == " ") then
-        hw.problems[hw.index] = hw.problems[hw.index]..p.ans_input
-        if (p.ans_input == tostr(hw.answers[hw.index])) then
-            hw.subm_format[hw.index] = 3
+        active_page.problems[active_page.index] = active_page.problems[active_page.index]..p.ans_input
+        if (p.ans_input == tostr(active_page.answers[active_page.index])) then
+            active_page.subm_format[active_page.index] = 3
         else
-            hw.subm_format[hw.index] = 8
+            active_page.subm_format[active_page.index] = 8
         end
-        hw.index += 1
+        active_page.index += 1
+
+        if (#hw > 1 and active_page.index > 13 and last == 0) then
+            del(hw,active_page)
+        elseif (#hw == 1) then
+            last = #active_page.problems
+            if (active_page.index > last) del(hw,active_page)
+            
+        end
+        if (#hw < 1) game_state = 2
         p.ans_input = ""
         return
     end
@@ -161,14 +199,16 @@ function updateKeyInput()
     else
         p.ans_input = p.ans_input..t
     end
+
 end
 
 function drawKeyInput()
     if (p.ans_input=="") then
+        if (active_page.problems[active_page.index] == nil) return
         --rect(4+#hw.problems[hw.index]*4,hw.index*8,6+#hw.problems[hw.index]*4,hw.index*8 +4,0)
-        spr(2,8+#hw.problems[hw.index]*4,hw.index*8)
+        spr(2,8+#active_page.problems[active_page.index]*4,active_page.index*8)
     else
-        print(p.ans_input,8+#hw.problems[hw.index]*4,hw.index*8,0)
+        print(p.ans_input,8+#active_page.problems[active_page.index]*4,active_page.index*8,0)
     end
 end
 
@@ -181,7 +221,8 @@ function updateAttentionBar()
 end
 
 function drawAttentionBar()
-    rectfill(2,115,2+p.attention,120,11)
+    rectfill(4,115,124,124,0)
+    rectfill(6,117,2+p.attention,122,11)
 end
 
 
@@ -208,7 +249,7 @@ function updateEnemies()
         elseif (i.y > 60) then
             i.y -= 1
         end
-
+        --consider momementum based aka dx dy
         if (checkEnemyCollision(i)) del(enemies,i)
 
         if (i.x == 92 and i.y == 60) then
@@ -220,7 +261,7 @@ function updateEnemies()
 
     -- then, if applicable, spawn an enemy if its time
     if (tick > 0 and tick % 15 == 0) e_sec +=1
-    if (e_sec == 1) then
+    if (e_sec ==2) then
         e_sec = 0
         local temp_x = rndb(0,128)
         local temp_y = nil
