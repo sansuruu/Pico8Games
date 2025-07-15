@@ -3,7 +3,7 @@
 function _init()
     poke(0x5F2D, 1)
     -- title screen stuff before any of this lmfao
-    game_state = 0 -- 0 => not active, 1 => active, 2=> shop
+    game_state = 1 -- 0 => title sequence, 1 => first time enable, 2=> shop, 3=>continue
     tick = 0
     day = 1
     num_table = {1,2,3,4,5,6,7,8,9,0}
@@ -13,8 +13,10 @@ end
 
 function _update()
     if (game_state == 0) then
-        if (btn(5)) game_init()
+        if (btn(5)) game_state = 1
     elseif (game_state == 1) then
+        dayManager()
+    elseif (game_state == 2) then
         updateKeyInput()
         updateMouse()
         updateEnemies()
@@ -28,6 +30,9 @@ function _draw()
     if (game_state == 0) then
         drawTitleScreen()
     elseif (game_state == 1) then
+        cls(1)
+        drawDayManager()
+    elseif (game_state == 2) then
         cls(1)
         sspr(24,0,16,16,65,32,59,60) -- brain
         drawHomework() --in order -> background, homework, attention bar, enemies, mouse
@@ -47,6 +52,18 @@ function drawTitleScreen()
     print("press ❎ to begin",32, 60, 7) 
 end
 
+
+function dayManager()
+    
+end
+
+function drawDayManager()
+    rect(4,35,24,55,6)
+    rect(29,35,49,55,6)
+    rect(54,35,74,55,6)
+    rect(79,35,99,55,6)
+    rect(104,35,124,55,6)
+end
 
 
 function game_init()
@@ -83,7 +100,8 @@ function makePlayer()
         m_sprite = 1,
         ans_input = "",
         hw_length = 26,
-        attention = 100,
+        max_attention = 20,
+        attention = max_attention,
         distract_p = 20,
         speed = 2,
         correct = 0, --hold data on if its right or not
@@ -107,6 +125,8 @@ end
 function makeHomework()
     hw_complete = false
     hw = {}
+    hw_page_index = 1
+    hw_max_page= (p.hw_length \ 14) + 1
 
     page_count = (p.hw_length \ 14) + 1
     local temp = p.hw_length
@@ -143,11 +163,12 @@ function makeHomework()
 end
 
 function drawHomework()
-    local color = nil
-
+    
     rectfill(2,2,60,125,6) --paper
     rectfill(4,4,58,123,7)
-
+    rectfill(60,2,76,14,6) --paper
+    rectfill(58,4,74,12,7)
+    print(tostr(hw_page_index).."/"..tostr(hw_max_page), 61,6,2)
     active_page = hw[1]
     for i=1, #active_page.problems do
         print(active_page.problems[i],8,i*8,active_page.subm_format[i])
@@ -170,17 +191,22 @@ function updateKeyInput()
         active_page.problems[active_page.index] = active_page.problems[active_page.index]..p.ans_input
         if (p.ans_input == tostr(active_page.answers[active_page.index])) then
             active_page.subm_format[active_page.index] = 3
+            p.correct += 1
         else
             active_page.subm_format[active_page.index] = 8
+            p.incorrect += 1
         end
         active_page.index += 1
 
-        if (#hw > 1 and active_page.index > 13 and last == 0) then
+        if (#hw > 1 and active_page.index > 13 and last == 0) then --in any case where theres more than 1 page left
             del(hw,active_page)
-        elseif (#hw == 1) then
+            hw_page_index += 1
+        elseif (#hw == 1) then --we only have 1 page left 
             last = #active_page.problems
-            if (active_page.index > last) del(hw,active_page)
-            
+            if (active_page.index > last) then
+                del(hw,active_page)
+                hw_complete = true
+            end
         end
         if (#hw < 1) game_state = 2
         p.ans_input = ""
@@ -221,7 +247,7 @@ function updateAttentionBar()
 end
 
 function drawAttentionBar()
-    rectfill(4,115,124,124,0)
+    rectfill(4,115,124,4+p.max_attention,0)
     rectfill(6,117,2+p.attention,122,11)
 end
 
