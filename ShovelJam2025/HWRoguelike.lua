@@ -5,15 +5,19 @@ function _init()
     -- title screen stuff before any of this lmfao
     game_state = 1 -- 0 => title sequence, 1 => first time enable, 2=> shop, 3=>continue
     tick = 0
-    day = 1
+    day = 1 -- this acts as the blinds
+    week = 1 --this acts as the "ante"
     num_table = {1,2,3,4,5,6,7,8,9,0}
-
+    makePlayer()
 end
 
 
 function _update()
     if (game_state == 0) then
-        if (btn(5)) game_state = 1
+        if (btn(5)) then
+            game_state = 1
+            dayInit()
+        end
     elseif (game_state == 1) then
         dayManager()
     elseif (game_state == 2) then
@@ -32,6 +36,7 @@ function _draw()
     elseif (game_state == 1) then
         cls(1)
         drawDayManager()
+        drawStatsScreen()
     elseif (game_state == 2) then
         cls(1)
         sspr(24,0,16,16,65,32,59,60) -- brain
@@ -52,25 +57,48 @@ function drawTitleScreen()
     print("press ❎ to begin",32, 60, 7) 
 end
 
+function dayInit()
+    active_stats_s = true
+end
 
 function dayManager()
+    if (btnp(5) and day < 5) then
+        day +=1
+        --then do like shop n shit idk
+    end
+    if (btnp(4)) then
+        game_init()
+    end
     
+    if (stat(31) == "\t") active_stats_s = not active_stats_s
 end
 
 function drawDayManager()
-    rect(4,35,24,55,6)
-    rect(29,35,49,55,6)
-    rect(54,35,74,55,6)
-    rect(79,35,99,55,6)
-    rect(104,35,124,55,6)
+    for i=0, 4 do
+        local color = 6
+        if (i+1 == day) color = 8
+        rect(4+i*25,35,24+i*25,55,color)
+    end
+
+
+    print("your homework is due\n    in "..5-day.." day(s)",25,15)
+    print("press ❎ to work on\n some of it today", 27, 68,3)
+    if (day < 5) print("press 🅾️ to procrastinate", 15, 85,10)
+
 end
 
+function drawStatsScreen()
+    if (active_stats_s) then
+        rectfill(80,60,126,128,15)
+        print("problems\nleft: "..p.hw_length-(p.correct + p.incorrect),84,62,0)
+    end
+end
 
 function game_init()
-    game_state = 1
-    makePlayer()
+    game_state = 2
     makeHomework()
     initEnemies()
+    p.attention = p.max_attention
     --explain the game briefly lmfaoo
     --add a quick inbetween scene where we basically choose a difficulty (LATER)
 end
@@ -101,7 +129,7 @@ function makePlayer()
         ans_input = "",
         hw_length = 26,
         max_attention = 20,
-        attention = max_attention,
+        attention = 20,
         distract_p = 20,
         speed = 2,
         correct = 0, --hold data on if its right or not
@@ -163,7 +191,7 @@ function makeHomework()
 end
 
 function drawHomework()
-    
+
     rectfill(2,2,60,125,6) --paper
     rectfill(4,4,58,123,7)
     rectfill(60,2,76,14,6) --paper
@@ -208,7 +236,7 @@ function updateKeyInput()
                 hw_complete = true
             end
         end
-        if (#hw < 1) game_state = 2
+        if (#hw < 1) game_state = 1
         p.ans_input = ""
         return
     end
@@ -247,7 +275,7 @@ function updateAttentionBar()
 end
 
 function drawAttentionBar()
-    rectfill(4,115,124,4+p.max_attention,0)
+    rectfill(4,115,4+p.max_attention,124,0)
     rectfill(6,117,2+p.attention,122,11)
 end
 
