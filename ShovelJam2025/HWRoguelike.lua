@@ -3,18 +3,19 @@
 function _init()
     poke(0x5F2D, 1)
     -- title screen stuff before any of this lmfao
-    game_state = 1 -- 0 => title sequence, 1 => first time enable, 2=> shop, 3=>continue
+    game_state = 0 -- 0 => title sequence, 1 => first time enable, 2=> shop, 3=>continue
     tick = 0
     day = 1 -- this acts as the blinds
     week = 1 --this acts as the "ante"
     num_table = {1,2,3,4,5,6,7,8,9,0}
+    base = {hw_length = 20, attent=20, dis_p=20, sp=1, diff = 20}
     makePlayer()
 end
 
 
 function _update()
     if (game_state == 0) then
-        if (btn(5)) then
+        if (btnp(5)) then
             game_state = 1
             dayInit()
         end
@@ -27,6 +28,8 @@ function _update()
         updateAttentionBar()
         checkHomeworkComplete()
         updateTick()
+    elseif (game_state == 3) then
+        updateLoopJudgement()
     end
 end
 
@@ -45,6 +48,8 @@ function _draw()
         drawEnemies()
         drawMouse()
         drawKeyInput()
+    elseif (game_state == 3) then
+        drawJudgementScreen()
     end
     
 end
@@ -58,15 +63,16 @@ function drawTitleScreen()
 end
 
 function dayInit()
-    active_stats_s = true
+    active_stats_s = false
+
 end
 
 function dayManager()
-    if (btnp(5) and day < 5) then
+    if (btnp(4) and day < 5) then
         day +=1
         --then do like shop n shit idk
     end
-    if (btnp(4)) then
+    if (btnp(5)) then
         game_init()
     end
     
@@ -80,19 +86,59 @@ function drawDayManager()
         rect(4+i*25,35,24+i*25,55,color)
     end
 
-
+    print("week "..week,2,2,6)
     print("your homework is due\n    in "..5-day.." day(s)",25,15)
     print("press ❎ to work on\n some of it today", 27, 68,3)
     if (day < 5) print("press 🅾️ to procrastinate", 15, 85,10)
 
 end
 
+function finishDay()
+    if (day < 5) then
+        day+=1
+        game_state = 1
+    else
+        local t = p.hw_set_length-(p.correct + p.incorrect)
+        p.incorrect += t
+        game_state = 3
+    end
+    
+end
+
 function drawStatsScreen()
     if (active_stats_s) then
         rectfill(80,60,126,128,15)
-        print("problems\nleft: "..p.hw_length-(p.correct + p.incorrect),84,62,0)
+        print("problems\nleft: "..p.hw_set_length-(p.correct + p.incorrect).."\n\n★: "..p.correct.."\n\nX: "..p.incorrect,84,62,0)
     end
 end
+
+function updateLoopJudgement()
+    pass = p.correct >= flr(p.hw_set_length * 0.6)
+    if (not pass and btnp(5)) _init()
+    if (pass and btnp(5)) then
+        week += 1
+        day = 1
+        game_state = 1
+        updatePlayer(week)
+    end
+        
+end
+
+function drawJudgementScreen()
+    
+    cls(1)
+    print("week "..week.." summary:",10,50,6)
+    print("correct: "..p.correct.."   incorrect: "..p.incorrect, 10, 70, 6)
+    if (pass) then
+        print("you have passed this week\ncongrats",10,80,6)
+    else
+        print("you have failed, you lose",10,80,4)
+        print("press ❎ to restart the game", 10, 85,3)
+    end
+
+
+end
+
 
 function game_init()
     game_state = 2
@@ -122,19 +168,35 @@ end
 
 --PLAYER
 function makePlayer()
+    local ti = {}
+    if (p != nil) then
+        ti = p.inv
+    end
+
     p = {
         m_x = 0,
         m_y = 0,
         m_sprite = 1,
         ans_input = "",
-        hw_length = 26,
-        max_attention = 20,
-        attention = 20,
-        distract_p = 20,
-        speed = 2,
+        hw_set_length = base.hw_length,    --stat: total length
+        hw_length = 0,--used for func
+        max_attention = base.attent,    --stat: max time
+        attention = 0,--used for func
+        distract_p = base.dis_p,       --stat: how often dudes will spawn
+        speed = base.sp,
+        difficulty = base.diff,
         correct = 0, --hold data on if its right or not
-        incorrect = 0
+        incorrect = 0,
+        inv = {}
     }
+    p.inv = ti
+end
+
+function updatePlayer(w)
+    p.correct = 0
+    p.incorrect = 0
+    p.difficulty += w *10
+    p.hw_set_length = base.hw_length + w * 10 
 end
 
 
@@ -154,6 +216,12 @@ function makeHomework()
     hw_complete = false
     hw = {}
     hw_page_index = 1
+    if (day < 5) then
+        p.hw_length = p.hw_set_length \ 5
+    else
+        p.hw_length = p.hw_set_length - (p.correct + p.incorrect)
+    end
+
     hw_max_page= (p.hw_length \ 14) + 1
 
     page_count = (p.hw_length \ 14) + 1
@@ -167,7 +235,7 @@ function makeHomework()
         }
         if (temp > 13) then
             for i=1, 13 do
-                local temp_ans = rndb(1,20)
+                local temp_ans = rndb(1+(week-1)*5,p.difficulty)
                 add(hw_page.answers, temp_ans)
                 local temp_a = rndb(1,temp_ans)
                 local temp_b = temp_ans - temp_a
@@ -236,7 +304,7 @@ function updateKeyInput()
                 hw_complete = true
             end
         end
-        if (#hw < 1) game_state = 1
+        if (#hw < 1) finishDay()
         p.ans_input = ""
         return
     end
@@ -272,11 +340,12 @@ function updateAttentionBar()
     if (tick ==30) then
         p.attention -= 1
     end
+    if (p.attention <= 0) finishDay()
 end
 
 function drawAttentionBar()
-    rectfill(4,115,4+p.max_attention,124,0)
-    rectfill(6,117,2+p.attention,122,11)
+    rectfill(4,115,8+p.max_attention,124,0)
+    if (p.attention > -1) rectfill(6,117,6+p.attention,122,11)
 end
 
 
@@ -314,8 +383,8 @@ function updateEnemies()
 
 
     -- then, if applicable, spawn an enemy if its time
-    if (tick > 0 and tick % 15 == 0) e_sec +=1
-    if (e_sec ==2) then
+    if (tick > 0 and tick % 30 == 0) e_sec +=1
+    if (e_sec ==1 and rndb(0,100) < p.distract_p) then
         e_sec = 0
         local temp_x = rndb(0,128)
         local temp_y = nil
@@ -347,4 +416,6 @@ function drawEnemies()
         spr(i.sprite,i.x,i.y)
     end
 end
+
+--Coroutines
 
