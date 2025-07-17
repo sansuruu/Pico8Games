@@ -154,7 +154,7 @@ function drawJudgementScreen()
     print("week "..week.." summary:",10,50,6)
     print("correct: "..p.correct.."   incorrect: "..p.incorrect, 10, 70, 6)
     if (pass) then
-        print("you have passed this week\ncongrats",10,80,6)
+        print("you have passed this week\ncongrats",10,80,7)
         print("press ❎ to continue", 10, 95,3)
     else
         print("you have failed, you lose",10,80,4)
