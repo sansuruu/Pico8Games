@@ -10,9 +10,10 @@ function _init()
     num_table = {1,2,3,4,5,6,7,8,9,0}
     submitted = false
     sub_tick = 0
-    enemy_mod = 5 --in the tick % 30, basically we go down 15->10->6->5, etc
-    enemy_mod_inc = 1 --everytime the above modulates, e_sec goes up, this is the upper limit of that
+    enemy_mod = 15 --in the tick % 30, basically we go down 15->10->6->5, etc
+    enemy_mod_inc = 3 --everytime the above modulates, e_sec goes up, this is the upper limit of that
     base = {hw_length = 20, attent=25, dis_p=90, sp=2, diff = 20}
+    item_desc = {pencil="pencil: +speed",glasses="glasses: +attention",paper="paper: -%distraction\nspawns"}
     makePlayer()
 end
 
@@ -168,7 +169,8 @@ function game_init()
     game_state = 2
     makeHomework()
     initEnemies()
-    p.attention = p.max_attention
+    p.attention = tonum(p.max_attention)
+    p.ans_input = ""
     --explain the game briefly lmfaoo
     --add a quick inbetween scene where we basically choose a difficulty (LATER)
 end
@@ -176,17 +178,21 @@ end
 function drawDayHWRewards()
     cls(1)
     if (hw_complete) then
-        print("congrats you completed  aset of hw")
-        print("use arrow key to choose an item :D")
+        print(" congrats you completed\na chunk of your homework", 18, 20,6)
+        print(" use arrow keys\nto choose an item", 30, 40,6)
         for i=1, #item_pool do
-            if (item_pool[i] == "pencil") spr(18,20+i*12,70)
-            if (item_pool[i] == "glasses") spr(16,20+i*12,70)
-            if (item_pool[i] == "paper") spr(17,20+i*12,70) 
+            if (item_pool[i] == "pencil") spr(18,26+i*16,60)
+            if (item_pool[i] == "glasses") spr(16,26+i*16,60)
+            if (item_pool[i] == "paper") spr(17,26+i*16,60) 
         end
-        rect(19+item_index*12,69,28+item_index*12,78)
+        rect(25+item_index*16,59,34+item_index*16,68)
+
+        print(item_desc[item_pool[item_index]],40,70,6)
+        print("press ❎ to select the item", 10, 90,6) 
 
     else
-        print("unfortunately u did not finish the small chunk")
+        print("unfortunately u did not\nfinish the small chunk",20,30,6)
+        print("press ❎ to continue", 10, 90,6)
     end
 end
 
@@ -195,10 +201,10 @@ function updateDayHWRewards()
     if (btnp(1) and item_index < 3) item_index += 1 
     if (btnp(5)) then
         add(p.inv,item_pool[item_index])
-        item_pool = {}
         if (item_pool[item_index] == "pencil") p.speed += 0.5
         if (item_pool[item_index] == "glasses") p.max_attention += 5
-        if (item_pool[item_index] == "paper") p.distract_p -= 5 
+        if (item_pool[item_index] == "paper") p.distract_p -= 5
+        item_pool = {} 
         game_state = 1
     end
 end
