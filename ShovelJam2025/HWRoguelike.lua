@@ -8,7 +8,11 @@ function _init()
     day = 1 -- this acts as the blinds
     week = 1 --this acts as the "ante"
     num_table = {1,2,3,4,5,6,7,8,9,0}
-    base = {hw_length = 20, attent=20, dis_p=20, sp=1, diff = 20}
+    submitted = false
+    sub_tick = 0
+    enemy_mod = 5 --in the tick % 30, basically we go down 15->10->6->5, etc
+    enemy_mod_inc = 1 --everytime the above modulates, e_sec goes up, this is the upper limit of that
+    base = {hw_length = 20, attent=25, dis_p=90, sp=2, diff = 20}
     makePlayer()
 end
 
@@ -30,6 +34,8 @@ function _update()
         updateTick()
     elseif (game_state == 3) then
         updateLoopJudgement()
+    elseif (game_state == 4) then
+        updateDayHWRewards()
     end
 end
 
@@ -43,13 +49,18 @@ function _draw()
     elseif (game_state == 2) then
         cls(1)
         sspr(24,0,16,16,65,32,59,60) -- brain
+        rect(91,56,99,64,5) --area where they hit
         drawHomework() --in order -> background, homework, attention bar, enemies, mouse
+        drawKeyInput()
+        drawWritingAnswer()
         drawAttentionBar()
         drawEnemies()
         drawMouse()
-        drawKeyInput()
+        
     elseif (game_state == 3) then
         drawJudgementScreen()
+    elseif (game_state == 4) then
+        drawDayHWRewards()
     end
     
 end
@@ -94,9 +105,21 @@ function drawDayManager()
 end
 
 function finishDay()
+    submitted = false
+    sub_tick = 0
     if (day < 5) then
         day+=1
-        game_state = 1
+        item_pool = {}
+        item_index = 1
+        if (hw_complete) then
+            for i=1,3 do
+                local t = rndb(1,3)
+                if (t == 1) add(item_pool,"pencil")
+                if (t == 2) add (item_pool,"glasses")
+                if (t == 3) add (item_pool,"paper")
+            end
+        end
+        game_state = 4
     else
         local t = p.hw_set_length-(p.correct + p.incorrect)
         p.incorrect += t
@@ -131,9 +154,10 @@ function drawJudgementScreen()
     print("correct: "..p.correct.."   incorrect: "..p.incorrect, 10, 70, 6)
     if (pass) then
         print("you have passed this week\ncongrats",10,80,6)
+        print("press ❎ to continue", 10, 95,3)
     else
         print("you have failed, you lose",10,80,4)
-        print("press ❎ to restart the game", 10, 85,3)
+        print("press ❎ to restart the game", 10, 90,3)
     end
 
 
@@ -147,6 +171,36 @@ function game_init()
     p.attention = p.max_attention
     --explain the game briefly lmfaoo
     --add a quick inbetween scene where we basically choose a difficulty (LATER)
+end
+
+function drawDayHWRewards()
+    cls(1)
+    if (hw_complete) then
+        print("congrats you completed  aset of hw")
+        print("use arrow key to choose an item :D")
+        for i=1, #item_pool do
+            if (item_pool[i] == "pencil") spr(18,20+i*12,70)
+            if (item_pool[i] == "glasses") spr(16,20+i*12,70)
+            if (item_pool[i] == "paper") spr(17,20+i*12,70) 
+        end
+        rect(19+item_index*12,69,28+item_index*12,78)
+
+    else
+        print("unfortunately u did not finish the small chunk")
+    end
+end
+
+function updateDayHWRewards()
+    if (btnp(0) and item_index > 1) item_index -= 1
+    if (btnp(1) and item_index < 3) item_index += 1 
+    if (btnp(5)) then
+        add(p.inv,item_pool[item_index])
+        item_pool = {}
+        if (item_pool[item_index] == "pencil") p.speed += 0.5
+        if (item_pool[item_index] == "glasses") p.max_attention += 5
+        if (item_pool[item_index] == "paper") p.distract_p -= 5 
+        game_state = 1
+    end
 end
 
 
@@ -197,6 +251,12 @@ function updatePlayer(w)
     p.incorrect = 0
     p.difficulty += w *10
     p.hw_set_length = base.hw_length + w * 10 
+    p.distract_p -= 10
+    if (enemy_mod_inc>1) then
+        enemy_mod_inc -= 1
+    elseif (enemy_mod>1) then
+        enemy_mod -= 1
+    end
 end
 
 
@@ -283,7 +343,10 @@ function updateKeyInput()
     local t = stat(31)
     local last = #active_page.problems % 13
     if (t == "\r") return
-    if (t == " ") then
+    if (t == " " and submitted) return
+    if (t == " " and not submitted) submitted = not submitted
+    
+    if (submitted and sub_tick > (300/p.speed)) then
         active_page.problems[active_page.index] = active_page.problems[active_page.index]..p.ans_input
         if (p.ans_input == tostr(active_page.answers[active_page.index])) then
             active_page.subm_format[active_page.index] = 3
@@ -306,10 +369,19 @@ function updateKeyInput()
         end
         if (#hw < 1) finishDay()
         p.ans_input = ""
+        submitted = false
+        sub_tick = 0
         return
+    else
+        if (submitted) then
+            sub_tick += 1
+        end
     end
+
+
     if (t == "\b" or t=="\t") then
         p.ans_input = sub(p.ans_input,1,#p.ans_input-1)
+        sfx(2)
         return
     end
     local isNum = false
@@ -319,7 +391,9 @@ function updateKeyInput()
     if (not isNum) then
         return
     else
+        if (submitted) return
         p.ans_input = p.ans_input..t
+        sfx(2)
     end
 
 end
@@ -334,6 +408,14 @@ function drawKeyInput()
     end
 end
 
+function drawWritingAnswer()
+    
+    if (submitted) then
+        if (active_page.problems[active_page.index] == nil) return
+         --convert hoiw long -> perc -> length thats consistent
+        rectfill(8,active_page.index*8,8+flr((sub_tick/(300/p.speed))*(#active_page.problems[active_page.index]*4+#p.ans_input*4)),active_page.index*8+4,9)
+    end
+end
 
 --ATTENTION BAR
 function updateAttentionBar()
@@ -354,6 +436,7 @@ end
 function initEnemies()
     enemies = {}
     e_sec = 0
+    enemy_vel_bound = 1
 end
 
 function updateEnemies()
@@ -362,29 +445,33 @@ function updateEnemies()
     -- 96, 64 is the target
     for i in all(enemies) do
 
-        if (i.x < 92) then
-            i.x += 1
-        elseif (i.x > 92) then
-            i.x -= 1
+        if (i.x < 95 and i.dx < enemy_vel_bound) then
+            i.dx += 0.05
+        elseif (i.x > 95 and i.dx > -1*enemy_vel_bound) then
+            i.dx -= 0.05
         end
-        if (i.y < 60) then
-            i.y += 1
-        elseif (i.y > 60) then
-            i.y -= 1
+        if (i.y < 60 and i.dy < enemy_vel_bound) then
+            i.dy += 0.05
+        elseif (i.y > 60 and i.dy > -1*enemy_vel_bound) then
+            i.dy -= 0.05
         end
+
+        i.x += i.dx
+        i.y += i.dy
         --consider momementum based aka dx dy
         if (checkEnemyCollision(i)) del(enemies,i)
 
-        if (i.x == 92 and i.y == 60) then
+        if (i.x < 99 and i.x+7 > 91 and i.y < 64 and i.y+7 > 56) then
             del(enemies,i)
             p.attention -=5
         end
     end
-
+    
 
     -- then, if applicable, spawn an enemy if its time
-    if (tick > 0 and tick % 30 == 0) e_sec +=1
-    if (e_sec ==1 and rndb(0,100) < p.distract_p) then
+    -- coroutine: enemy spawn vfx
+    if (tick > 0 and tick % enemy_mod == 0) e_sec +=1
+    if (e_sec == enemy_mod_inc and rndb(0,100) < p.distract_p) then
         e_sec = 0
         local temp_x = rndb(0,128)
         local temp_y = nil
@@ -397,6 +484,8 @@ function updateEnemies()
         local e = {
             x = temp_x,
             y = temp_y,
+            dx = -1^(rndb(1,2))*rnd(0),
+            dy = -1^(rndb(1,2))*rnd(0),
             sprite = rndb(5,10)
         }
         add(enemies,e)
