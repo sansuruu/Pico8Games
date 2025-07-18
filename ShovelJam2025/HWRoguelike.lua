@@ -13,7 +13,16 @@ function _init()
     enemy_mod = 15 --in the tick % 30, basically we go down 15->10->6->5, etc
     enemy_mod_inc = 3 --everytime the above modulates, e_sec goes up, this is the upper limit of that
     base = {hw_length = 20, attent=25, dis_p=90, sp=2, diff = 20}
-    item_desc = {pencil="pencil: +speed",glasses="glasses: +attention",paper="paper: -%distraction\nspawns"}
+    item_desc = {
+        --common
+        pencil="pencil: +speed",
+        glasses="glasses: +attention",
+        paper="paper: -%distraction\nspawns",
+
+        --rare
+        coin="distractions have a 50/50\nchance to give attention",
+        star="gold star: 50% hw length,\nbut 2x difficulty"
+    }
     makePlayer()
 end
 
@@ -141,9 +150,10 @@ function updateLoopJudgement()
     if (not pass and btnp(5)) _init()
     if (pass and btnp(5)) then
         week += 1
+        updatePlayer(week)
         day = 1
         game_state = 1
-        updatePlayer(week)
+        
     end
         
 end
@@ -255,10 +265,10 @@ end
 function updatePlayer(w)
     p.correct = 0
     p.incorrect = 0
-    p.difficulty += w *10
-    p.hw_set_length = base.hw_length + w * 10 
-    p.distract_p -= 10
-    if (enemy_mod_inc>1) then
+    p.difficulty = w * 200
+    p.hw_set_length = flr(base.hw_length + 10 * 2^(w-1))
+    if (p.distract_p < 100) p.distract_p += 10
+    if (enemy_mod_inc > 1) then
         enemy_mod_inc -= 1
     elseif (enemy_mod>1) then
         enemy_mod -= 1
@@ -301,7 +311,7 @@ function makeHomework()
         }
         if (temp > 13) then
             for i=1, 13 do
-                local temp_ans = rndb(1+(week-1)*5,p.difficulty)
+                local temp_ans = rndb((1+(week-1)*5),p.difficulty)
                 add(hw_page.answers, temp_ans)
                 local temp_a = rndb(1,temp_ans)
                 local temp_b = temp_ans - temp_a
@@ -312,7 +322,7 @@ function makeHomework()
             temp -= 13
         else
             for i=1, temp do
-                local temp_ans = rndb(1,20)
+                local temp_ans = rndb((1+(week-1)*5),p.difficulty)
                 add(hw_page.answers, temp_ans)
                 local temp_a = rndb(1,temp_ans)
                 local temp_b = temp_ans - temp_a
