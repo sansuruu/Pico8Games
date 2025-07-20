@@ -1,6 +1,7 @@
 --main function
 
 function _init()
+    
     poke(0x5F2D, 1)
     -- title screen stuff before any of this lmfao
     game_state = 0 -- 0 => title sequence, 1 => first time enable, 2=> shop, 3=>continue
@@ -12,7 +13,7 @@ function _init()
     sub_tick = 0
     enemy_mod = 15 --in the tick % 30, basically we go down 15->10->6->5, etc
     enemy_mod_inc = 3 --everytime the above modulates, e_sec goes up, this is the upper limit of that
-    base = {hw_length = 15, attent=30, dis_p=90, sp=200, diff = 20}
+    base = {hw_length = 15, attent=80, dis_p=90, sp=2, diff = 20}
     chosen = 0
     item_desc = {
         --common
@@ -21,11 +22,15 @@ function _init()
         paper="paper: -%distraction\nspawns",
 
         --rare
-        coin="distractions have a 50/50\nchance to give attention",
+        coin="coin: distractions have a\n50/50 chance to give attent",
         star="gold star: 50% hw length,\nbut 2x difficulty",
         headphones="headphones: no distractions\n but faster attention drain"
     }
+
+    particleInit()
+    shakeInit()    
     makePlayer()
+    sfx(12)
 end
 
 
@@ -41,6 +46,7 @@ function _update()
         updateKeyInput()
         updateMouse()
         updateEnemies()
+        particleUpdate()
         updateAttentionBar()
         updateTick()
     elseif (game_state == 3) then -- end of week
@@ -59,9 +65,10 @@ function _draw()
         cls(1)
         drawDayManager()
         drawStatsScreen()
-        print(p.grade.."%",100,5,6)
+        print("grade:"..p.grade.."%",88,2,6)
     elseif (game_state == 2) then
         cls(1)
+        doShake()
         sspr(24,0,16,16,65,32,59,60) -- brain
         rect(91,56,99,64,5) --area where they hit
         drawHomework() --in order -> background, homework, attention bar, enemies, mouse
@@ -69,18 +76,19 @@ function _draw()
         drawWritingAnswer()
         drawAttentionBar()
         drawEnemies()
+        particleDraw()
         drawMouse()
-        print(p.grade.."%",100,5,6)
+        print("grade:"..p.grade.."%",88,2,6)
     elseif (game_state == 3) then
         drawJudgementScreen()
-        print(p.grade.."%",100,5,6)
+        print("grade:"..p.grade.."%",88,2,6)
     elseif (game_state == 4) then
         drawDayHWRewards()
-        print(p.grade.."%",100,5,6)
+        print("grade:"..p.grade.."%",88,2,6)
     elseif (game_state == 5) then
         drawProcrastinate()
+        print("grade:"..p.grade.."%",88,2,6)
     end
-    
 end
 
 --Title Screen + Game State Changers
@@ -88,7 +96,7 @@ end
 function drawProcrastinate()
     cls(1)
     if (procras_luck <=4) then
-        print(" you skipped today to ____, d", 18, 20,6)
+        print(" you skipped today to\n refocus your mental.", 18, 20,6)
         print(" use arrow keys\nto choose an item", 30, 40,6)
         for i=1, #item_pool do
             if (item_pool[i] == "pencil") spr(18,26+i*16,60) --consider making temporary items1
@@ -97,20 +105,20 @@ function drawProcrastinate()
         end
         rect(25+item_index*16,59,34+item_index*16,68)
 
-        print(item_desc[item_pool[item_index]],40,70,6)
+        print(item_desc[item_pool[item_index]],35,70,6)
         print("press ❎ to select the item", 10, 90,6) 
 
     elseif (procras_luck <= 8) then
-        print("you wasted ur time lmfao",20,30,6)
+        print("you skipped today\nand did nothing :(",25,30,6)
 
-        print("press ❎ to continue", 10, 90,6)
+        print("press ❎ to continue", 24, 90,6)
     else
-        print("rare item found",20,30,6)
+        print("you skipped today and\n found a rare trinket",20,30,6)
         if (item_pool[1] == "coin") spr(32,26+32,60)
         if (item_pool[1] == "star") spr(34,26+32,60)
         if (item_pool[1] == "headphones") spr(35,26+32,60) 
-        print(item_desc[item_pool[1]],40,70,6)
-        print("press ❎ to grab,\n🅾️ to skip the item", 10, 90,6)
+        print(item_desc[item_pool[1]],15,70,6)
+        print(" press ❎ to grab\n🅾️ to skip the item", 30, 90,6)
     end
 end
 
@@ -134,6 +142,8 @@ function updateProcrastinate()
             if (item_pool[1] == "star") then
                 p.difficulty *= 2
                 p.hw_set_length \= 2
+
+                if (p.hw_set_length < 1) p.hw_set_length = 1
             end
             item_pool = {} 
             game_state = 1
@@ -149,9 +159,20 @@ end
 
 
 function drawTitleScreen()
-    cls(0)
-    print("procrasti-stop",38,50,7)
+    cls(1)
+    circfill(64,64,50,5)
+    circfill(64,64,40,1)
+    circfill(64,64,30,5)
+    sspr(16,8,8,8,24,48)
+    sspr(8,8,8,8,96,48)
+    
+    print("procrasti-start",34,50,7)
     print("press ❎ to begin",32, 60, 7) 
+
+
+    
+    print("BY SANSURU",44,100,6)
+    print("(CHECK DESC. FOR INFO/TUTORIAL)",3,115,6)
 end
 
 function dayInit()
@@ -200,8 +221,9 @@ function drawDayManager()
     end
 
     print("week "..week,2,2,6)
-    print("your homework is due\n    in "..5-day.." day(s)",25,15)
-    print("press ❎ to work on\n some of it today", 27, 68,3)
+    print(" you have a test in\n    in "..5-day.." day(s)",25,15)
+    print("press ❎ to study today", 20, 68,3)
+    print("press [tab] to toggle stats", 10, 100, 6)
     if (day < 5) print("press 🅾️ to procrastinate", 15, 85,10)
 
 end
@@ -217,18 +239,26 @@ function finishDay()
         if (prev_incorrect == p.hw_incorrect) item_pool_length += 2
         item_index = 1
         if (hw_complete) then
+            sfx(6)
             for i=1,item_pool_length do
                 local t = rndb(1,3)
                 if (t == 1) add(item_pool,"pencil")
                 if (t == 2) add (item_pool,"glasses")
                 if (t == 3) add (item_pool,"paper")
             end
+        else
+            sfx(5)
         end
         game_state = 4
     else
         local t = p.hw_set_length-(p.test_correct + p.test_incorrect)
         p.test_incorrect += t
         updateGrade()
+        if (p.grade >= 70) then
+            sfx(6)
+        else
+            sfx(5)
+        end
         game_state = 3
     end
     
@@ -236,13 +266,30 @@ end
 
 function drawStatsScreen() --update: remove current line, add more stats + inv
     if (active_stats_s) then
-        rectfill(80,60,126,128,15)
-        print("problems\nleft: "..p.hw_set_length.."\n\n★: ",84,62,0)
-        local index = 1
-        for k,v in all(p.inv) do
-            print(k,2,5+index*5,7)
-            index += 1
+        rectfill(2,60,126,128,15)
+        print("test length: "..p.hw_set_length,4,62,0)
+        print("attention: "..p.max_attention,4,68,0)
+        print("speed: "..p.speed,4,74,0)
+        print("difficulty: "..p.difficulty,4,80,0)
+        print("distract%: "..p.difficulty,4,86,0)
 
+        print("hw grade: "..p.hw_grade,4,98,0)
+        print("exam grade: "..p.test_grade,4,104,0)
+
+        --display items lol
+        local index = 1
+        local item_count = {}
+        for k in all(p.inv) do
+            if (item_count[k] == nil) then
+                item_count[k] = 1
+            else
+                item_count[k] += 1 
+            end
+        end
+
+        for k,v in pairs(item_count) do
+            print(k..": "..v,80,56+index*6,7)
+            index += 1
         end
 
     end
@@ -301,8 +348,10 @@ end
 function drawDayHWRewards()
     cls(1)
     if (hw_complete) then
+        choose_lim = 1
+        if (prev_incorrect == p.hw_incorrect) choose_lim += 1
         print(" congrats you completed\na chunk of your homework", 18, 20,6)
-        print(" use arrow keys\nto choose an item", 30, 40,6)
+        print(" use arrow keys\nto choose "..choose_lim.." item(s)", 30, 40,6)
         for i=1, #item_pool do
             if (item_pool[i] == "pencil") spr(18,26+i*16,60) --consider making temporary items1
             if (item_pool[i] == "glasses") spr(16,26+i*16,60)
@@ -314,18 +363,20 @@ function drawDayHWRewards()
         print("press ❎ to select the item", 10, 90,6) 
 
     else
-        print("unfortunately u did not\nfinish the small chunk",20,30,6)
-        print("press ❎ to continue", 10, 90,6)
+        print("your mind starts to wander...",10,30,6)
+        print("(you did not finish\nthe study session)",24,40,6)
+        print("press ❎ to continue", 23, 90,6)
     end
 end
 
 function updateDayHWRewards()
-    if (btnp(0) and item_index > 1) item_index -= 1
-    if (btnp(1) and item_index < #item_pool) item_index += 1 
+    if (btnp(0) and item_index > 1) then item_index -= 1 sfx(3) end
+    if (btnp(1) and item_index < #item_pool) then item_index += 1 sfx(3) end
     choose_lim = 1
     if (prev_incorrect == p.hw_incorrect) choose_lim += 1
     if (btnp(5)) then
         add(p.inv,item_pool[item_index])
+        sfx(3)
         if (item_pool[item_index] == "pencil") p.speed += 0.5
         if (item_pool[item_index] == "glasses") p.max_attention += 5
         if (item_pool[item_index] == "paper") p.distract_p -= 5
@@ -403,6 +454,7 @@ function updatePlayer(w)
         if (k=="star") then
             p.difficulty *= 2
             p.hw_set_length \= 2
+            if (p.hw_set_length < 1) p.hw_set_length = 1
         end
     end
 
@@ -435,6 +487,7 @@ function makeHomework()
     hw_page_index = 1
     if (day < 5) then
         p.hw_length = p.hw_set_length \ 3
+        if (p.hw_length < 1) p.hw_length = 1
     else
         p.hw_length = p.hw_set_length
     end
@@ -505,10 +558,12 @@ function updateKeyInput()
             active_page.subm_format[active_page.index] = 3
             if (day == 5) p.test_correct += 1
             if (day < 5) p.hw_correct += 1
+            sfx(9)
         else
             active_page.subm_format[active_page.index] = 8
             if (day == 5) p.test_incorrect += 1
             if (day < 5) p.hw_incorrect += 1
+            sfx(8)
         end
         updateGrade()
         active_page.index += 1
@@ -537,7 +592,7 @@ function updateKeyInput()
 
     if (t == "\b" or t=="\t") then
         p.ans_input = sub(p.ans_input,1,#p.ans_input-1)
-        sfx(2)
+        sfx(3)
         return
     end
     local isNum = false
@@ -549,7 +604,7 @@ function updateKeyInput()
     else
         if (submitted) return
         p.ans_input = p.ans_input..t
-        sfx(2)
+        sfx(3)
     end
 
 end
@@ -569,6 +624,7 @@ function drawWritingAnswer()
     if (submitted) then
         if (active_page.problems[active_page.index] == nil) return
          --convert hoiw long -> perc -> length thats consistent
+        if (flr((100*(sub_tick/(300/p.speed)))) % 10 == 0) sfx(0)
         rectfill(8,active_page.index*8,8+flr((sub_tick/(300/p.speed))*(#active_page.problems[active_page.index]*4+#p.ans_input*4)),active_page.index*8+4,9)
     end
 end
@@ -631,11 +687,19 @@ function updateEnemies()
         i.x += i.dx
         i.y += i.dy
         --consider momementum based aka dx dy
-        if (checkEnemyCollision(i)) del(enemies,i)
+        if (checkEnemyCollision(i)) then 
+            sfx(10) 
+            for k=1,10 do
+                add_p(i.x+4,i.y+4)
+            end
+            del(enemies,i) 
+
+        end
 
         if (i.x < 99 and i.x+7 > 91 and i.y < 64 and i.y+7 > 56) then
             del(enemies,i)
-
+            sfx(2)
+            sfx(4)
             --check first for coin
             for k,v in all(p.inv) do
                 if (k=="coin") then
@@ -672,6 +736,12 @@ function updateEnemies()
             sprite = rndb(5,10)
         }
         add(enemies,e)
+        for i=1,10 do
+            add_p(e.x+4,e.y+4)
+        end
+        shake += 0.065
+        sfx(1)
+        sfx(11)
     end
 end
 
@@ -689,5 +759,65 @@ function drawEnemies()
     end
 end
 
---Coroutines
+--particles?
+function particleInit()
+    ps={}       --empty particle table
+    g=0.1       --particle gravity
+    max_vel=0.5   --max initial particle velocity
+    min_life=20 --particle lifetime
+    max_life=60
+    cols={2,13,13,9,9,8,8,8} --colors
+    burst=50
 
+    end
+    function rndb(low,high)
+    return flr(rnd(high-low+1)+low)
+end
+
+function particleUpdate()
+    --burst
+    foreach(ps,update_p)
+end
+function particleDraw()
+    foreach(ps,draw_p)
+end
+
+function add_p(x,y)
+    local p={}
+    p.x,p.y=x,y
+    p.dx=rnd(max_vel)*(-1)^rndb(0,1)
+    p.dy=rnd(max_vel)*(-1)^rndb(0,1)
+    p.life_start=rndb(min_life,max_life)
+    p.life=p.life_start
+    add(ps,p)
+end
+
+function update_p(p)
+    if (p.life<=0) then
+        del(ps,p) --kill old particles
+    else
+        p.x+=p.dx --update position
+        p.y+=p.dy
+        p.life-=1 --die a little
+    end
+end
+
+function draw_p(p)
+    local pcol=flr(p.life/p.life_start*#cols+1)
+    pset(p.x,p.y,cols[pcol])
+end
+
+-- subtle screenshake
+function shakeInit()
+    shake = 0
+end
+
+function doShake()
+    local shakex=8-rnd(16)
+    local shakey=8-rnd(16)
+    shakex*=shake
+    shakey*=shake
+    camera(shakex,shakey)
+    shake = shake*0.95
+    if (shake<0.05) shake=0
+end
