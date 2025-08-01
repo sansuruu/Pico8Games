@@ -12,8 +12,8 @@ function _init()
     submitted = false
     sub_tick = 0
     enemy_mod = 15 --in the tick % 30, basically we go down 15->10->6->5, etc
-    enemy_mod_inc = 3 --everytime the above modulates, e_sec goes up, this is the upper limit of that
-    base = {hw_length = 15, attent=80, dis_p=90, sp=2, diff = 20}
+    enemy_mod_inc = 4 --everytime the above modulates, e_sec goes up, this is the upper limit of that
+    base = {hw_length = 15, attent=30, dis_p=35, sp=2, diff = 20}
     chosen = 0
     item_desc = {
         --common
@@ -30,7 +30,6 @@ function _init()
     particleInit()
     shakeInit()    
     makePlayer()
-    sfx(12)
 end
 
 
@@ -124,13 +123,13 @@ end
 
 function updateProcrastinate()
     if (procras_luck <=4) then
-        if (btnp(0) and item_index > 1) item_index -= 1
-        if (btnp(1) and item_index < 3) item_index += 1 
+        if (btnp(0) and item_index > 1) then item_index -= 1 sfx(3) end
+        if (btnp(1) and item_index < 3) then item_index += 1 sfx(3) end
         if (btnp(5)) then
             add(p.inv,item_pool[item_index])
             if (item_pool[item_index] == "pencil") p.speed += 0.5
             if (item_pool[item_index] == "glasses") p.max_attention += 5
-            if (item_pool[item_index] == "paper") p.distract_p -= 5
+            if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 5
             item_pool = {} 
             game_state = 1
         end
@@ -379,7 +378,7 @@ function updateDayHWRewards()
         sfx(3)
         if (item_pool[item_index] == "pencil") p.speed += 0.5
         if (item_pool[item_index] == "glasses") p.max_attention += 5
-        if (item_pool[item_index] == "paper") p.distract_p -= 5
+        if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 5
         del(item_pool, item_pool[item_index])
         chosen += 1
         if (chosen == choose_lim) then
@@ -447,7 +446,7 @@ function updatePlayer(w)
 
     --hw scaling
     p.difficulty = w * 20
-    p.hw_set_length = flr(base.hw_length + 10 * 2^(w-1))
+    p.hw_set_length = flr(base.hw_length + 10 * 1.75^(w-1))
 
     --=check for star
     for k,v in all(p.inv) do
@@ -459,7 +458,7 @@ function updatePlayer(w)
     end
 
     -- enemy scaling
-    if (p.distract_p < 100) p.distract_p += 10
+    if (p.distract_p < 100) p.distract_p += 5
     if (enemy_mod_inc > 1) then
         enemy_mod_inc -= 1
     elseif (enemy_mod>1) then
@@ -718,7 +717,7 @@ function updateEnemies()
     -- then, if applicable, spawn an enemy if its time
     -- coroutine: enemy spawn vfx
     if (tick > 0 and tick % enemy_mod == 0) e_sec +=1
-    if (e_sec == enemy_mod_inc and rndb(0,100) < p.distract_p) then
+    if ((e_sec == enemy_mod_inc and (rndb(0,100)< p.distract_p))) then
         e_sec = 0
         local temp_x = rndb(0,128)
         local temp_y = nil
