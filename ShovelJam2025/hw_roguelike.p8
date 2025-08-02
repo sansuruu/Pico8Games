@@ -1,7 +1,90 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-#include hwroguelike.lua
+--GAMESTATE FUNCTIONS
+#include GameStates/PreGame.lua
+#include GameStates/Day.lua
+#include GameStates/Procrastinate.lua
+#include GameStates/Judgement.lua
+--VFX FUNCTIONS
+#include VFX/Particles.lua
+#include VFX/CameraShake.lua
+--MAIN GAMEPLAY FUNCTIONS
+#include MainLoop/Helpers.lua
+#include MainLoop/Player.lua
+#include MainLoop/Homework.lua
+#include MainLoop/Enemies.lua
+#include MainLoop/Attention.lua
+
+
+
+function _init()
+    preInit()
+    particleInit()
+    shakeInit()    
+    makePlayer()
+end
+
+function _update()
+    if (game_state == 0) then
+        if (btnp(5)) then
+            game_state = 1
+            dayInit()
+        end
+    elseif (game_state == 1) then --day manager
+        dayManager()
+    elseif (game_state == 2) then --main game loop
+        updateKeyInput()
+        updateMouse()
+        updateEnemies()
+        particleUpdate()
+        updateAttentionBar()
+        updateTick()
+    elseif (game_state == 3) then -- end of week
+        updateLoopJudgement()
+    elseif (game_state == 4) then --studied
+        updateDayHWRewards()
+    elseif (game_state == 5) then
+        updateProcrastinate()
+    end
+end
+
+
+function _draw()
+    if (game_state == 0) then
+        drawTitleScreen()
+    elseif (game_state == 1) then
+        cls(1)
+        drawDayManager()
+        drawStatsScreen()
+        print("grade:"..p.grade.."%",88,2,6)
+    elseif (game_state == 2) then
+        cls(1)
+        doShake()
+        sspr(24,0,16,16,65,32,59,60) -- brain
+        rect(91,56,99,64,5) --area where they hit
+        drawHomework() --in order -> background, homework, attention bar, enemies, mouse
+        drawKeyInput()
+        drawWritingAnswer()
+        drawAttentionBar()
+        drawEnemies()
+        particleDraw()
+        drawMouse()
+        print("grade:"..p.grade.."%",88,2,6)
+    elseif (game_state == 3) then
+        drawJudgementScreen()
+        print("grade:"..p.grade.."%",88,2,6)
+    elseif (game_state == 4) then
+        drawDayHWRewards()
+        print("grade:"..p.grade.."%",88,2,6)
+    elseif (game_state == 5) then
+        drawProcrastinate()
+        print("grade:"..p.grade.."%",88,2,6)
+    end
+end
+
+
+
 __gfx__
 000000000dddd0000080000000000000000000000000cc00dddddddd000000000bbb00000c0c00c000000000000aa00000000000000000000000000000000000
 00000000dd65dd000880000000000000000000000000c700d777777d000000000b33bb00ccc55cc00055550000aaaa0000000000000000000000000000000000
