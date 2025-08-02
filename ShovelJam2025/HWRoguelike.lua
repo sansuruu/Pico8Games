@@ -1,5 +1,4 @@
 --Main Functions
-    
 function _init()
     poke(0x5F2D, 1)
     -- title screen stuff before any of this lmfao
@@ -160,6 +159,82 @@ function drawDayManager()
 
 end
 
+function drawDayHWRewards()
+    cls(1)
+    if (hw_complete) then
+        choose_lim = 1
+        if (prev_incorrect == p.hw_incorrect) choose_lim += 1
+        print(" congrats you completed\na chunk of your homework", 18, 20,6)
+        print(" use arrow keys\nto choose "..choose_lim.." item(s)", 30, 40,6)
+        for i=1, #item_pool do
+            if (item_pool[i] == "pencil") spr(18,26+i*16,60) --consider making temporary items1
+            if (item_pool[i] == "glasses") spr(16,26+i*16,60)
+            if (item_pool[i] == "paper") spr(17,26+i*16,60) 
+        end
+        rect(25+item_index*16,59,34+item_index*16,68)
+
+        print(item_desc[item_pool[item_index]],40,70,6)
+        print("press ❎ to select the item", 10, 90,6) 
+
+    else
+        print("your mind starts to wander...",10,30,6)
+        print("(you did not finish\nthe study session)",24,40,6)
+        print("press ❎ to continue", 23, 90,6)
+    end
+end
+
+function updateDayHWRewards()
+    if (btnp(0) and item_index > 1) then item_index -= 1 sfx(3) end
+    if (btnp(1) and item_index < #item_pool) then item_index += 1 sfx(3) end
+    choose_lim = 1
+    if (prev_incorrect == p.hw_incorrect) choose_lim += 1
+    if (btnp(5)) then
+        add(p.inv,item_pool[item_index])
+        sfx(3)
+        if (item_pool[item_index] == "pencil") p.speed += 0.5
+        if (item_pool[item_index] == "glasses") p.max_attention += 5
+        if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 5
+        del(item_pool, item_pool[item_index])
+        chosen += 1
+        if (chosen == choose_lim) then
+            chosen = 0
+            game_state = 1
+            item_pool = {} 
+        end
+    end
+end
+
+function drawStatsScreen() --update: remove current line, add more stats + inv
+    if (active_stats_s) then
+        rectfill(2,60,126,128,15)
+        print("test length: "..p.hw_set_length,4,62,0)
+        print("attention: "..p.max_attention,4,68,0)
+        print("speed: "..p.speed,4,74,0)
+        print("difficulty: "..p.difficulty,4,80,0)
+        print("distract%: "..p.difficulty,4,86,0)
+
+        print("hw grade: "..p.hw_grade,4,98,0)
+        print("exam grade: "..p.test_grade,4,104,0)
+
+        --display items lol
+        local index = 1
+        local item_count = {}
+        for k in all(p.inv) do
+            if (item_count[k] == nil) then
+                item_count[k] = 1
+            else
+                item_count[k] += 1 
+            end
+        end
+
+        for k,v in pairs(item_count) do
+            print(k..": "..v,80,56+index*6,7)
+            index += 1
+        end
+
+    end
+end
+
 function finishDay()
     submitted = false
     sub_tick = 0
@@ -265,37 +340,6 @@ end
 
 
 
-function drawStatsScreen() --update: remove current line, add more stats + inv
-    if (active_stats_s) then
-        rectfill(2,60,126,128,15)
-        print("test length: "..p.hw_set_length,4,62,0)
-        print("attention: "..p.max_attention,4,68,0)
-        print("speed: "..p.speed,4,74,0)
-        print("difficulty: "..p.difficulty,4,80,0)
-        print("distract%: "..p.difficulty,4,86,0)
-
-        print("hw grade: "..p.hw_grade,4,98,0)
-        print("exam grade: "..p.test_grade,4,104,0)
-
-        --display items lol
-        local index = 1
-        local item_count = {}
-        for k in all(p.inv) do
-            if (item_count[k] == nil) then
-                item_count[k] = 1
-            else
-                item_count[k] += 1 
-            end
-        end
-
-        for k,v in pairs(item_count) do
-            print(k..": "..v,80,56+index*6,7)
-            index += 1
-        end
-
-    end
-end
-
 function updateLoopJudgement()
     pass = p.grade >= 70
     if (not pass and btnp(5)) _init()
@@ -309,15 +353,7 @@ function updateLoopJudgement()
         
 end
 
-function updateGrade()
-    if (p.test_correct == 0 and p.test_incorrect == 0) then
-        p.hw_grade = ceil(100*(0.2 * (p.hw_correct / (p.hw_correct + p.hw_incorrect))))
-    else
-        p.test_grade =  ceil(100*(0.8 * (p.test_correct/(p.test_correct+p.test_incorrect))))
-    end
 
-    p.grade = p.hw_grade + p.test_grade
-end    
 
 function drawJudgementScreen()
     
@@ -346,50 +382,17 @@ function game_init()
     --add a quick inbetween scene where we basically choose a difficulty (LATER)
 end
 
-function drawDayHWRewards()
-    cls(1)
-    if (hw_complete) then
-        choose_lim = 1
-        if (prev_incorrect == p.hw_incorrect) choose_lim += 1
-        print(" congrats you completed\na chunk of your homework", 18, 20,6)
-        print(" use arrow keys\nto choose "..choose_lim.." item(s)", 30, 40,6)
-        for i=1, #item_pool do
-            if (item_pool[i] == "pencil") spr(18,26+i*16,60) --consider making temporary items1
-            if (item_pool[i] == "glasses") spr(16,26+i*16,60)
-            if (item_pool[i] == "paper") spr(17,26+i*16,60) 
-        end
-        rect(25+item_index*16,59,34+item_index*16,68)
-
-        print(item_desc[item_pool[item_index]],40,70,6)
-        print("press ❎ to select the item", 10, 90,6) 
-
+function updateGrade()
+    if (p.test_correct == 0 and p.test_incorrect == 0) then
+        p.hw_grade = ceil(100*(0.2 * (p.hw_correct / (p.hw_correct + p.hw_incorrect))))
     else
-        print("your mind starts to wander...",10,30,6)
-        print("(you did not finish\nthe study session)",24,40,6)
-        print("press ❎ to continue", 23, 90,6)
+        p.test_grade =  ceil(100*(0.8 * (p.test_correct/(p.test_correct+p.test_incorrect))))
     end
-end
 
-function updateDayHWRewards()
-    if (btnp(0) and item_index > 1) then item_index -= 1 sfx(3) end
-    if (btnp(1) and item_index < #item_pool) then item_index += 1 sfx(3) end
-    choose_lim = 1
-    if (prev_incorrect == p.hw_incorrect) choose_lim += 1
-    if (btnp(5)) then
-        add(p.inv,item_pool[item_index])
-        sfx(3)
-        if (item_pool[item_index] == "pencil") p.speed += 0.5
-        if (item_pool[item_index] == "glasses") p.max_attention += 5
-        if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 5
-        del(item_pool, item_pool[item_index])
-        chosen += 1
-        if (chosen == choose_lim) then
-            chosen = 0
-            game_state = 1
-            item_pool = {} 
-        end
-    end
-end
+    p.grade = p.hw_grade + p.test_grade
+end    
+
+
 
 
 
@@ -481,7 +484,154 @@ end
 
 
 --HOMEWORK
+function makeHomework()
+    prev_incorrect = p.hw_incorrect
+    hw_complete = false
+    hw = {}
+    hw_page_index = 1
+    if (day < 5) then
+        p.hw_length = p.hw_set_length \ 3
+        if (p.hw_length < 1) p.hw_length = 1
+    else
+        p.hw_length = p.hw_set_length
+    end
 
+    hw_max_page= (p.hw_length \ 14) + 1
+
+    page_count = (p.hw_length \ 14) + 1
+    local temp = p.hw_length
+    for i=1, page_count do 
+        hw_page = {
+            problems = {},
+            answers = {},
+            subm_format = {}, -- 0 -> n/a, 3 -> correct, 8 -> wrong
+            index = 1
+        }
+        if (temp > 13) then
+            for i=1, 13 do
+                local temp_ans = rndb((1+(week-1)*5),p.difficulty)
+                add(hw_page.answers, temp_ans)
+                local temp_a = rndb(1,temp_ans)
+                local temp_b = temp_ans - temp_a
+                add(hw_page.problems,""..temp_a.."+"..temp_b.."=")
+                add(hw_page.subm_format,0)
+            end
+            add(hw, hw_page)
+            temp -= 13
+        else
+            for i=1, temp do
+                local temp_ans = rndb((1+(week-1)*5),p.difficulty)
+                add(hw_page.answers, temp_ans)
+                local temp_a = rndb(1,temp_ans)
+                local temp_b = temp_ans - temp_a
+                add(hw_page.problems,""..temp_a.."+"..temp_b.."=")
+                add(hw_page.subm_format,0)
+            end
+            add(hw, hw_page)            
+        end
+    end
+end
+
+function drawHomework()
+
+    rectfill(2,2,60,125,6) --paper
+    rectfill(4,4,58,123,7)
+    rectfill(60,2,76,14,6) --paper
+    rectfill(58,4,74,12,7)
+    print(tostr(hw_page_index).."/"..tostr(hw_max_page), 61,6,2)
+    active_page = hw[1]
+    for i=1, #active_page.problems do
+        print(active_page.problems[i],8,i*8,active_page.subm_format[i])
+    end
+    
+end
+
+
+ --KEYBOARD
+
+function updateKeyInput()
+    local t = stat(31)
+    local last = #active_page.problems % 13
+    if (t == "\r") return
+    if (t == " " and submitted) return
+    if (t == " " and not submitted) submitted = not submitted
+    
+    if (submitted and sub_tick > (300/p.speed)) then
+        active_page.problems[active_page.index] = active_page.problems[active_page.index]..p.ans_input
+        if (p.ans_input == tostr(active_page.answers[active_page.index])) then
+            active_page.subm_format[active_page.index] = 3
+            if (day == 5) p.test_correct += 1
+            if (day < 5) p.hw_correct += 1
+            sfx(9)
+        else
+            active_page.subm_format[active_page.index] = 8
+            if (day == 5) p.test_incorrect += 1
+            if (day < 5) p.hw_incorrect += 1
+            sfx(8)
+        end
+        updateGrade()
+        active_page.index += 1
+
+        if (#hw > 1 and active_page.index > 13 and last == 0) then --in any case where theres more than 1 page left
+            del(hw,active_page)
+            hw_page_index += 1
+        elseif (#hw == 1) then --we only have 1 page left 
+            last = #active_page.problems
+            if (active_page.index > last) then
+                del(hw,active_page)
+                hw_complete = true
+            end
+        end
+        if (#hw < 1) finishDay()
+        p.ans_input = ""
+        submitted = false
+        sub_tick = 0
+        return
+    else
+        if (submitted) then
+            sub_tick += 1
+        end
+    end
+
+
+    if (t == "\b" or t=="\t" and not submitted) then
+        p.ans_input = sub(p.ans_input,1,#p.ans_input-1)
+        sfx(3)
+        return
+    end
+    local isNum = false
+    for i in all(num_table) do
+        if (tostr(t) == tostr(i)) isNum = true
+    end
+    if (not isNum) then
+        return
+    else
+        if (submitted) return
+        p.ans_input = p.ans_input..t
+        sfx(3)
+    end
+
+end
+
+function drawKeyInput()
+    if (p.ans_input=="") then
+        if (active_page.problems[active_page.index] == nil) return
+        --rect(4+#hw.problems[hw.index]*4,hw.index*8,6+#hw.problems[hw.index]*4,hw.index*8 +4,0)
+        spr(2,8+#active_page.problems[active_page.index]*4,active_page.index*8)
+    else
+        print(p.ans_input,8+#active_page.problems[active_page.index]*4,active_page.index*8,0)
+    end
+end
+
+function drawWritingAnswer()
+    
+    if (submitted) then
+        if (active_page.problems[active_page.index] == nil) return
+         --convert hoiw long -> perc -> length thats consistent
+        if (flr((100*(sub_tick/(300/p.speed)))) % 10 == 0) sfx(0)
+        rectfill(8,active_page.index*8,8+flr((sub_tick/(300/p.speed))*(#active_page.problems[active_page.index]*4+#p.ans_input*4)),active_page.index*8+4,9)
+    end
+end
 
 --ATTENTION BAR
 function updateAttentionBar()
