@@ -16,7 +16,8 @@ function makePlayer()
         max_attention = base.attent,    --stat: max time
         attention = 0,--used for func
         distract_p = base.dis_p,       --stat: how often dudes will spawn
-        speed = base.sp,
+        distract_r = base.dis_r,
+        speed = base.sp,  --stat: how fast answers pend
         difficulty = base.diff,
         test_correct = 0, --hold data on if its right or not
         test_incorrect = 0,
@@ -40,8 +41,8 @@ function updatePlayer(w)
     prev_incorrect = 0
 
     --hw scaling
-    p.difficulty = w * 20
-    p.hw_set_length = flr(base.hw_length + 5 * 1.75^(w-1))
+    p.difficulty = w * base.diff
+    p.hw_set_length = flr(base.hw_length + 5 * 1.25^(w-1))
 
     --=check for star
     for k,v in all(p.inv) do
@@ -54,11 +55,14 @@ function updatePlayer(w)
 
     -- enemy scaling
     if (p.distract_p < 100) p.distract_p += 5
+    if (p.distract_p > 100) p.distract_p = 100
     if (enemy_mod_inc > 1) then
         enemy_mod_inc -= 1
     elseif (enemy_mod>1) then
         enemy_mod -= 1
     end
+
+    enemy_attack +=10
 end
 
 

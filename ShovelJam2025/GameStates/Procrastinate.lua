@@ -8,7 +8,8 @@ function updateProcrastinate()
             add(p.inv,item_pool[item_index])
             if (item_pool[item_index] == "pencil") p.speed += 0.5
             if (item_pool[item_index] == "glasses") p.max_attention += 5
-            if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 5
+            if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 10
+            if (item_pool[item_index] == "notebook") p.distract_r += 0.5
             item_pool = {} 
             game_state = 1
         end
@@ -41,6 +42,7 @@ function drawProcrastinate()
             if (item_pool[i] == "pencil") spr(18,26+i*16,60) --consider making temporary items1
             if (item_pool[i] == "glasses") spr(16,26+i*16,60)
             if (item_pool[i] == "paper") spr(17,26+i*16,60) 
+            if (item_pool[i] == "notebook") spr(21,26+i*16,60) 
         end
         rect(25+item_index*16,59,34+item_index*16,68)
 

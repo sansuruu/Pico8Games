@@ -141,11 +141,15 @@ end
 
 --when we submit, we wanna draw the animation of answer loading up
 function drawWritingAnswer()
-    
     if (submitted) then
         if (active_page.problems[active_page.index] == nil) return
          --convert hoiw long -> perc -> length thats consistent
-        if (flr((100*(sub_tick/(300/p.speed)))) % 10 == 0) sfx(0) --this sfx is inconsistent idk how to fix it
+        if ((sub_tick/(300/p.speed)) > ten_ticker) then
+            sfx(0)
+            ten_ticker += 0.1
+        end
+        if (ten_ticker > 1) ten_ticker = 0
+
         rectfill(8,active_page.index*8,8+flr((sub_tick/(300/p.speed))*(#active_page.problems[active_page.index]*4+#p.ans_input*4)),active_page.index*8+4,9)
     end
 end

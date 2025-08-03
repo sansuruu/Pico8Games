@@ -1,6 +1,6 @@
+--general particle effects (for spawn and destroy)
 function particleInit()
     ps={}       --empty particle table
-    g=0.1       --particle gravity
     max_vel=0.5   --max initial particle velocity
     min_life=20 --particle lifetime
     max_life=60
@@ -16,6 +16,7 @@ function particleUpdate()
     --burst
     foreach(ps,update_p)
 end
+
 function particleDraw()
     foreach(ps,draw_p)
 end

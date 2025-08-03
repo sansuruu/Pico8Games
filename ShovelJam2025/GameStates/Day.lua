@@ -15,10 +15,11 @@ function dayManager()
             item_index = 1
             
             for i=1,3 do
-                local t = rndb(1,3)
+                local t = rndb(1,4)
                 if (t == 1) add(item_pool,"pencil")
                 if (t == 2) add (item_pool,"glasses")
                 if (t == 3) add (item_pool,"paper")
+                if (t == 4) add (item_pool,"notebook")
             end
             
         elseif (procras_luck > 8) then
@@ -48,9 +49,9 @@ function drawDayManager()
 
     print("week "..week,2,2,6)
     print(" you have a test in\n    in "..5-day.." day(s)",25,15)
-    print("press ❎ to study today", 20, 68,3)
+    print("press [x] to study today", 20, 68,3)
     print("press [tab] to toggle stats", 10, 100, 6)
-    if (day < 5) print("press 🅾️ to procrastinate", 15, 85,10)
+    if (day < 5) print("press [z] to procrastinate", 15, 85,10)
 
 end
 
@@ -62,10 +63,12 @@ function drawStatsScreen()
         print("attention: "..p.max_attention,4,68,0)
         print("speed: "..p.speed,4,74,0)
         print("difficulty: "..p.difficulty,4,80,0)
-        print("distract%: "..p.difficulty,4,86,0)
+        print("distract%: "..p.distract_p,4,86,0)
+        local res_dis_percent = 100-100*(1/(0.15*p.distract_r + 1))
+        print("distract res%: "..res_dis_percent,4,92,0)
 
-        print("hw grade: "..p.hw_grade,4,98,0)
-        print("exam grade: "..p.test_grade,4,104,0)
+        print("hw grade: "..p.hw_grade,4,104,0)
+        print("exam grade: "..p.test_grade,4,110,0)
 
         --display items lol
         local index = 1
@@ -88,6 +91,8 @@ end
 
 --when day finishes (either by hw completion or no more attent)
 function finishDay()
+    ps = {}
+    e_ps={}
     submitted = false
     sub_tick = 0
     if (day < 5) then
@@ -100,10 +105,11 @@ function finishDay()
         if (hw_complete) then
             sfx(6)
             for i=1,item_pool_length do
-                local t = rndb(1,3)
+                local t = rndb(1,4)
                 if (t == 1) add(item_pool,"pencil")
                 if (t == 2) add (item_pool,"glasses")
                 if (t == 3) add (item_pool,"paper")
+                if (t == 4) add (item_pool,"notebook")
             end
         else
             sfx(5)
@@ -132,9 +138,10 @@ function updateDayHWRewards()
     if (btnp(5)) then
         add(p.inv,item_pool[item_index])
         sfx(3)
-        if (item_pool[item_index] == "pencil") p.speed += 0.5
+        if (item_pool[item_index] == "pencil") p.speed += 0.25
         if (item_pool[item_index] == "glasses") p.max_attention += 5
-        if (item_pool[item_index] == "paper") if(p.distract_p > 0) p.distract_p -= 5
+        if (item_pool[item_index] == "paper") if (p.distract_p > 0) p.distract_p -= 10
+        if (item_pool[item_index] == "notebook") p.distract_r += 0.5
         del(item_pool, item_pool[item_index])
         chosen += 1
         if (chosen == choose_lim) then
@@ -157,6 +164,7 @@ function drawDayHWRewards()
             if (item_pool[i] == "pencil") spr(18,26+i*16,60) --consider making temporary items1
             if (item_pool[i] == "glasses") spr(16,26+i*16,60)
             if (item_pool[i] == "paper") spr(17,26+i*16,60) 
+            if (item_pool[i] == "notebook") spr(21,26+i*16,60) 
         end
         rect(25+item_index*16,59,34+item_index*16,68)
 

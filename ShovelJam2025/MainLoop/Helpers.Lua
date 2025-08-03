@@ -10,6 +10,7 @@ function game_init()
     --add a quick inbetween scene where we basically choose a difficulty (LATER)
 end
 
+--referenced throughout, just routinely called
 function updateGrade()
     if (p.test_correct == 0 and p.test_incorrect == 0) then
         p.hw_grade = ceil(100*(0.2 * (p.hw_correct / (p.hw_correct + p.hw_incorrect))))
@@ -32,4 +33,18 @@ function updateTick()
     else
         tick = 0
     end
+end
+
+--to help with text 	
+function p1(s,x,y,c) -- 42 tokens, 5.6 seconds
+?'\f0\-f'..s..'\^g\-h'..s..'\^g\|f'..s..'\^g\|h'..s..'\^g\f'..chr(c+(c>9 and 87 or 48))..s,x,y
+end
+
+function changeState(s)
+    game_state = s    
+
+end
+
+function distance(x1,y1,x2,y2)
+    return sqrt((x2-x1)^2+(y2-y1)^2)
 end
